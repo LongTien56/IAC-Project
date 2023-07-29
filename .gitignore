@@ -1,0 +1,9 @@
+/s3-backend/.terraform/
+/s3-backend/.terraform.lock.hcl
+/s3-backend/terraform.tfstate
+/s3-backend/terraform.tfstate.backup
+/terraform-lab/.terraform/
+/terraform-lab/.terraform.lock.hcl
+/terraform-lab/errored.tfstate
+/terraform-lab/terraform.tfstate
+/terraform-lab/terraform.tfstate.backup
