@@ -1,0 +1,8 @@
+helm executed ở local -> cần update repo ở local để có thể tìm thấy các repositories.
+helm repo add eks https://aws.github.io/eks-charts #add charts
+helm repo update
+
+EKS tạo LB trên Subnet dựa trên Annotation và Tag -> cần add đúng các tag.
+
+
+aws_load_balancer_controller bị thiếu policy để add tag -> thêm policy rồi attach vào role.

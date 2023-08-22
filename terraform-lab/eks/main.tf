@@ -51,6 +51,7 @@ resource "aws_iam_role" "nodes" {
     }]
     Version = "2012-10-17"
   })
+  
 }
 
 resource "aws_iam_role_policy_attachment" "nodes_amazon_eks_worker_node_policy" {
@@ -68,38 +69,38 @@ resource "aws_iam_role_policy_attachment" "nodes_amazon_ec2_container_registry_r
   role       = aws_iam_role.nodes.name
 }
 
-resource "aws_eks_node_group" "private_nodes" {
-  cluster_name    = aws_eks_cluster.staging.name
-  node_group_name = "private-nodes"
-  node_role_arn   = aws_iam_role.nodes.arn
+# resource "aws_eks_node_group" "private_nodes" {
+#   cluster_name    = aws_eks_cluster.staging.name
+#   node_group_name = "private-nodes"
+#   node_role_arn   = aws_iam_role.nodes.arn
 
-  subnet_ids = [
-    for subnet_id in var.private_subnet_id : subnet_id
-  ]
+#   subnet_ids = [
+#     for subnet_id in var.private_subnet_id : subnet_id
+#   ]
 
-  capacity_type  = var.capacity_type
-  instance_types = [var.instance_type]
+#   capacity_type  = var.capacity_type
+#   instance_types = [var.instance_type]
 
-  scaling_config {
-    desired_size = var.desired_size
-    max_size     = var.max
-    min_size     = var.min
-  }
+#   scaling_config {
+#     desired_size = var.desired_size
+#     max_size     = var.max
+#     min_size     = var.min
+#   }
 
-  update_config {
-    max_unavailable = 1
-  }
+#   update_config {
+#     max_unavailable = 1
+#   }
 
-  labels = {
-    role = "general"
-  }
+#   labels = {
+#     role = "general"
+#   }
 
-  depends_on = [
-    aws_iam_role_policy_attachment.nodes_amazon_eks_worker_node_policy,
-    aws_iam_role_policy_attachment.nodes_amazon_eks_cni_policy,
-    aws_iam_role_policy_attachment.nodes_amazon_ec2_container_registry_read_only,
-  ]
-}
+#   depends_on = [
+#     aws_iam_role_policy_attachment.nodes_amazon_eks_worker_node_policy,
+#     aws_iam_role_policy_attachment.nodes_amazon_eks_cni_policy,
+#     aws_iam_role_policy_attachment.nodes_amazon_ec2_container_registry_read_only,
+#   ]
+# }
 
 
 resource "aws_eks_node_group" "common" {
@@ -184,3 +185,57 @@ resource "aws_eks_addon" "csi_driver" {
   addon_version            = "v1.19.0-eksbuild.2"
   service_account_role_arn = aws_iam_role.eks_ebs_csi_driver.arn
 }
+
+
+
+
+#auto scaler
+data "aws_iam_policy_document" "eks_cluster_autoscaler_assume_role_policy" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    effect  = "Allow"
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:sub"
+      values   = ["system:serviceaccount:kube-system:cluster-autoscaler"]
+    }
+
+    principals {
+      identifiers = [aws_iam_openid_connect_provider.eks.arn]
+      type        = "Federated"
+    }
+  }
+}
+
+resource "aws_iam_role" "eks_cluster_autoscaler" {
+  assume_role_policy = data.aws_iam_policy_document.eks_cluster_autoscaler_assume_role_policy.json
+  name               = "eks-cluster-autoscaler"
+}
+
+resource "aws_iam_policy" "eks_cluster_autoscaler" {
+  name = "eks-cluster-autoscaler"
+
+  policy = jsonencode({
+    Statement = [{
+      Action = [
+                "autoscaling:DescribeAutoScalingGroups",
+                "autoscaling:DescribeAutoScalingInstances",
+                "autoscaling:DescribeLaunchConfigurations",
+                "autoscaling:DescribeTags",
+                "autoscaling:SetDesiredCapacity",
+                "autoscaling:TerminateInstanceInAutoScalingGroup",
+                "ec2:DescribeLaunchTemplateVersions"
+            ]
+      Effect   = "Allow"
+      Resource = "*"
+    }]
+    Version = "2012-10-17"
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cluster_autoscaler_attach" {
+  role       = aws_iam_role.eks_cluster_autoscaler.name
+  policy_arn = aws_iam_policy.eks_cluster_autoscaler.arn
+}
+
