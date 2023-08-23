@@ -89,3 +89,12 @@ resource "aws_iam_role_policy_attachment" "elb_add_tags_attachment" {
   policy_arn = aws_iam_policy.elb_add_tags_policy.arn
   role       = module.aws_load_balancer_controller_irsa_role.iam_role_name
 }
+
+
+#fluxCD
+resource "helm_release" "flux2" {
+    name      = "flux2"
+    repository = "https://fluxcd-community.github.io/helm-charts"
+    chart     = "flux2"
+    namespace = "kube-system"
+}

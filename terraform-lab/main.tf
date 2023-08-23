@@ -39,7 +39,7 @@ module "eks" {
   subnet_id = concat(module.vpc.private_subnet, module.vpc.public_subnet)
   instance_type = "t3.medium"  
   capacity_type = "SPOT"
-  desired_size = 1
+  desired_size = 3
   min = 1
   max = 3
 }
